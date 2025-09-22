@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>โปรแกรมคำนวณต้นทุนการผลิตสินค้าเกษตร</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Sarabun:wght@400;700&display=swap');
+        body {
+            font-family: 'Sarabun', sans-serif;
+            background-color: #f0f4f8;
+            color: #333;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+        }
+        .container {
+            width: 100%;
+            max-width: 800px;
+            background-color: #fff;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+        h1, h2 {
+            color: #2c5282;
+            border-bottom: 2px solid #2c5282;
+            padding-bottom: 10px;
+        }
+        .form-section {
+            background-color: #f7fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        .form-group {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+        .form-group label {
+            flex: 1 1 200px;
+            font-weight: bold;
+            margin-right: 15px;
+        }
+        .form-group input, .form-group select {
+            flex: 2 1 300px;
+            padding: 10px;
+            border: 1px solid #cbd5e0;
+            border-radius: 6px;
+            font-size: 16px;
+        }
+        .hidden {
+            display: none;
+        }
+        #total-cost, #net-profit {
+            font-size: 24px;
+            font-weight: bold;
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+            margin-top: 10px;
+        }
+        #total-cost {
+            background-color: #fed7d7;
+            color: #c53030;
+        }
+        #net-profit.profit {
+            background-color: #c6f6d5;
+            color: #2f855a;
+        }
+        #net-profit.loss {
+            background-color: #fed7d7;
+            color: #c53030;
+        }
+        .export-buttons {
+            text-align: center;
+            margin-top: 30px;
+        }
+        .export-buttons button {
+            background-color: #2c5282;
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            margin: 0 10px;
+            transition: background-color 0.3s;
+        }
+        .export-buttons button:hover {
+            background-color: #1a365d;
+        }
+        .summary-section {
+            margin-top: 30px;
+            padding: 20px;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 12px;
+            text-align: left;
+        }
+        th {
+            background-color: #edf2f7;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>📝 โปรแกรมคำนวณต้นทุนการผลิตสินค้าเกษตร</h1>
+
+    <div id="calculator-form">
+        <div class="form-section">
+            <h2>ส่วนที่ 1: ข้อมูลการผลิตและรายรับ</h2>
+            <div class="form-group">
+                <label for="area">พื้นที่ (ไร่):</label>
+                <input type="number" id="area" placeholder="กรอกจำนวนไร่">
+            </div>
+            <div class="form-group">
+                <label for="crop-type">ปลูกพืชอะไร:</label>
+                <select id="crop-type">
+                    <option value="">-- เลือกชนิดพืช --</option>
+                    <option value="ข้าวเจ้า">ข้าวเจ้า</option>
+                    <option value="ข้าวเหนียว">ข้าวเหนียว</option>
+                    <option value="มันสำปะหลัง">มันสำปะหลัง</option>
+                    <option value="อ้อย">อ้อย</option>
+                    <option value="มะนาว">มะนาว</option>
+                    <option value="ลำไย">ลำไย</option>
+                    <option value="มะม่วง">มะม่วง</option>
+                    <option value="อื่นๆ">พืชอื่นๆ (ระบุเอง)</option>
+                </select>
+            </div>
+             <div class="form-group hidden" id="other-crop-group">
+                <label for="other-crop-name">ระบุชื่อพืช:</label>
+                <input type="text" id="other-crop-name" placeholder="เช่น ทุเรียน, ยางพารา">
+            </div>
+            <div class="form-group">
+                <label for="yield">ผลผลิตที่คาดว่าจะได้รับ (กิโลกรัม):</label>
+                <input type="number" id="yield" placeholder="กรอกจำนวนผลผลิตเป็น กก.">
+            </div>
+            <div class="form-group">
+                <label for="total-sales">ราคาขายทั้งหมด (บาท):</label>
+                <input type="number" id="total-sales" placeholder="กรอกรายรับที่คาดว่าจะได้">
+            </div>
+        </div>
+
+        <div class="form-section">
+            <h2>ส่วนที่ 2: รายการต้นทุนการผลิต (บาท)</h2>
+            
+            <div class="form-group">
+                <label for="seed-variety">ชื่อพันธุ์พืช:</label>
+                <select id="seed-variety" class="hidden">
+                    </select>
+                <input type="text" id="other-variety-name" class="hidden" placeholder="ระบุชื่อพันธุ์">
+            </div>
+            
+            <div class="form-group">
+                <label for="seed-cost">ค่าเมล็ดพันธุ์/ต้นพันธุ์:</label>
+                <input type="number" id="seed-cost" placeholder="0">
+            </div>
+            <div class="form-group">
+                <label for="fertilizer-cost">ค่าปุ๋ย:</label>
+                <input type="number" id="fertilizer-cost" placeholder="0">
+            </div>
+            <div class="form-group">
+                <label for="chemical-cost">ค่าสารเคมี/สารชีวภัณฑ์:</label>
+                <input type="number" id="chemical-cost" placeholder="0">
+            </div>
+            <div class="form-group">
+                <label for="labor-cost">ค่าแรงงาน:</label>
+                <input type="number" id="labor-cost" placeholder="0">
+            </div>
+            <div class="form-group">
+                <label for="electricity-cost">ค่าไฟฟ้า:</label>
+                <input type="number" id="electricity-cost" placeholder="0">
+            </div>
+            <div class="form-group">
+                <label for="water-cost">ค่าน้ำ:</label>
+                <input type="number" id="water-cost" placeholder="0">
+            </div>
+            <div class="form-group">
+                <label for="tool-rental-cost">ค่าเช่าเครื่องมือ:</label>
+                <input type="number" id="tool-rental-cost" placeholder="0">
+            </div>
+            <div class="form-group">
+                <label for="land-rental-cost">ค่าเช่าที่ดิน:</label>
+                <input type="number" id="land-rental-cost" placeholder="0">
+            </div>
+            <div class="form-group">
+                <label for="harvest-cost">ค่ารถไถ/เก็บเกี่ยว:</label>
+                <input type="number" id="harvest-cost" placeholder="0">
+            </div>
+             <div class="form-group">
+                <label for="loan-cost">ค่าดอกเบี้ยเงินกู้:</label>
+                <input type="number" id="loan-cost" placeholder="0">
+            </div>
+            <div class="form-group">
+                <label for="materials-cost">ค่าวัสดุทำเกษตร:</label>
+                <input type="number" id="materials-cost" placeholder="0">
+            </div>
+             <div class="form-group">
+                <label for="equipment-cost">ค่าเสื่อมอุปกรณ์:</label>
+                <input type="number" id="equipment-cost" placeholder="0">
+            </div>
+            <div class="form-group">
+                <label for="other-costs">ค่าอื่นๆ:</label>
+                <input type="number" id="other-costs" placeholder="0">
+            </div>
+            <hr>
+            <h3>ยอดรวมต้นทุนทั้งหมด</h3>
+            <div id="total-cost">0.00 บาท</div>
+        </div>
+
+        <div class="form-section">
+            <h2>ส่วนที่ 3: สรุปผลกำไร/ขาดทุน</h2>
+            <h3>กำไรสุทธิ</h3>
+            <div id="net-profit" class="loss">0.00 บาท</div>
+        </div>
+    </div>
+    
+    <div id="summary-output" class="summary-section">
+        <h2>📊 สรุปผลและกราฟวิเคราะห์</h2>
+        <div id="summary-table-container"></div>
+        <div>
+            <h3>กราฟเปรียบเทียบสัดส่วนต้นทุน</h3>
+            <canvas id="cost-chart"></canvas>
+        </div>
+         <div>
+            <h3>กราฟเปรียบเทียบรายรับ, ต้นทุน, และกำไร</h3>
+            <canvas id="profit-chart"></canvas>
+        </div>
+    </div>
+
+    <div class="export-buttons">
+        <button id="export-png">ส่งออกเป็นรูปภาพ (PNG)</button>
+        <button id="export-pdf">ส่งออกเป็น PDF</button>
+    </div>
+
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const cropVarieties = {
+        'ข้าวเจ้า': ['กข85', 'กข43', 'กข61', 'พิษณุโลก 80', 'ปทุมธานี 1', 'หอมมะลิ 105', 'อื่นๆ (ระบุ)'],
+        'ข้าวเหนียว': ['กข6', 'สันป่าตอง 1', 'กข18', 'หอมนาคา', 'ธัญสิริน', 'อื่นๆ (ระบุ)'],
+        'มันสำปะหลัง': ['ระยอง 9', 'ระยอง 11', 'เกษตรศาสตร์ 50', 'ห้วยบง 60', 'พวงเพชร', 'อื่นๆ (ระบุ)'],
+        'อ้อย': ['ขอนแก่น 3', 'LK92-11', 'อู่ทอง 15', 'K88-92', 'อื่นๆ (ระบุ)'],
+        'มะนาว': ['แป้นรำไพ', 'แป้นพิจิตร 1', 'แป้นดกพิเศษ', 'ตาฮิติ', 'อื่นๆ (ระบุ)'],
+        'ลำไย': ['อีดอ', 'สีชมพู', 'แห้ว', 'เบี้ยวเขียว', 'อื่นๆ (ระบุ)'],
+        'มะม่วง': ['น้ำดอกไม้สีทอง', 'เขียวเสวย', 'อกร่อง', 'มหาชนก', 'R2E2', 'อื่นๆ (ระบุ)']
+    };
+
+    const cropTypeSelect = document.getElementById('crop-type');
+    const otherCropGroup = document.getElementById('other-crop-group');
+    const seedVarietySelect = document.getElementById('seed-variety');
+    const otherVarietyNameInput = document.getElementById('other-variety-name');
+    
+    // Chart instances
+    let costChartInstance = null;
+    let profitChartInstance = null;
+
+    cropTypeSelect.addEventListener('change', function() {
+        const selectedCrop = this.value;
+        seedVarietySelect.innerHTML = '';
+        otherVarietyNameInput.classList.add('hidden');
+        otherCropGroup.classList.add('hidden');
+
+        if (selectedCrop && cropVarieties[selectedCrop]) {
+            seedVarietySelect.classList.remove('hidden');
+            const varieties = cropVarieties[selectedCrop];
+            varieties.forEach(variety => {
+                const option = document.createElement('option');
+                option.value = variety;
+                option.textContent = variety;
+                seedVarietySelect.appendChild(option);
+            });
+        } else if (selectedCrop === 'อื่นๆ') {
+             otherCropGroup.classList.remove('hidden');
+             seedVarietySelect.classList.add('hidden');
+             otherVarietyNameInput.classList.remove('hidden');
+             otherVarietyNameInput.placeholder = "ระบุชนิดและพันธุ์พืช";
+        } else {
+            seedVarietySelect.classList.add('hidden');
+        }
+    });
+
+    seedVarietySelect.addEventListener('change', function() {
+        if (this.value === 'อื่นๆ (ระบุ)') {
+            otherVarietyNameInput.classList.remove('hidden');
+            otherVarietyNameInput.placeholder = "ระบุชื่อพันธุ์";
+        } else {
+            otherVarietyNameInput.classList.add('hidden');
+        }
+    });
+
+    const inputs = document.querySelectorAll('input[type="number"]');
+    inputs.forEach(input => {
+        input.addEventListener('input', calculateAndDisplay);
+    });
+
+    function getCostData() {
+        const costs = {
+            "ค่าเมล็ดพันธุ์/ต้นพันธุ์": parseFloat(document.getElementById('seed-cost').value) || 0,
+            "ค่าปุ๋ย": parseFloat(document.getElementById('fertilizer-cost').value) || 0,
+            "ค่าสารเคมี/ชีวภัณฑ์": parseFloat(document.getElementById('chemical-cost').value) || 0,
+            "ค่าแรงงาน": parseFloat(document.getElementById('labor-cost').value) || 0,
+            "ค่าไฟฟ้า": parseFloat(document.getElementById('electricity-cost').value) || 0,
+            "ค่าน้ำ": parseFloat(document.getElementById('water-cost').value) || 0,
+            "ค่าเช่าเครื่องมือ": parseFloat(document.getElementById('tool-rental-cost').value) || 0,
+            "ค่าเช่าที่ดิน": parseFloat(document.getElementById('land-rental-cost').value) || 0,
+            "ค่ารถไถ/เก็บเกี่ยว": parseFloat(document.getElementById('harvest-cost').value) || 0,
+            "ค่าดอกเบี้ยเงินกู้": parseFloat(document.getElementById('loan-cost').value) || 0,
+            "ค่าวัสดุทำเกษตร": parseFloat(document.getElementById('materials-cost').value) || 0,
+            "ค่าเสื่อมอุปกรณ์": parseFloat(document.getElementById('equipment-cost').value) || 0,
+            "ค่าอื่นๆ": parseFloat(document.getElementById('other-costs').value) || 0,
+        };
+        return costs;
+    }
+    
+    function calculateAndDisplay() {
+        const costs = getCostData();
+        const totalCost = Object.values(costs).reduce((sum, cost) => sum + cost, 0);
+        const totalSales = parseFloat(document.getElementById('total-sales').value) || 0;
+        const netProfit = totalSales - totalCost;
+
+        document.getElementById('total-cost').textContent = `${totalCost.toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} บาท`;
+        const netProfitEl = document.getElementById('net-profit');
+        netProfitEl.textContent = `${netProfit.toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} บาท`;
+
+        if (netProfit >= 0) {
+            netProfitEl.className = 'profit';
+        } else {
+            netProfitEl.className = 'loss';
+        }
+        
+        updateSummary();
+        updateCharts(costs, totalSales, totalCost, netProfit);
+    }
+
+    function updateSummary() {
+        const summaryContainer = document.getElementById('summary-table-container');
+        const costs = getCostData();
+        const totalCost = Object.values(costs).reduce((sum, cost) => sum + cost, 0);
+        const totalSales = parseFloat(document.getElementById('total-sales').value) || 0;
+        const netProfit = totalSales - totalCost;
+
+        let tableHTML = `
+            <h3>ตารางสรุปข้อมูล</h3>
+            <table>
+                <tr><th>รายการ</th><th>จำนวนเงิน (บาท)</th></tr>
+                <tr><td><strong>รายรับทั้งหมด</strong></td><td><strong>${totalSales.toLocaleString('th-TH', { style: 'currency', currency: 'THB' })}</strong></td></tr>
+                <tr><td colspan="2" style="background-color:#f7fafc;"><strong>ต้นทุนทั้งหมด</strong></td></tr>`;
+        
+        for (const [key, value] of Object.entries(costs)) {
+            if (value > 0) {
+                tableHTML += `<tr><td>${key}</td><td>${value.toLocaleString('th-TH', { style: 'currency', currency: 'THB' })}</td></tr>`;
+            }
+        }
+
+        tableHTML += `
+                <tr><td><strong>รวมต้นทุนทั้งหมด</strong></td><td><strong>${totalCost.toLocaleString('th-TH', { style: 'currency', currency: 'THB' })}</strong></td></tr>
+                <tr><td><strong>กำไรสุทธิ</strong></td><td><strong>${netProfit.toLocaleString('th-TH', { style: 'currency', currency: 'THB' })}</strong></td></tr>
+            </table>`;
+        
+        summaryContainer.innerHTML = tableHTML;
+    }
+
+    function updateCharts(costs, totalSales, totalCost, netProfit) {
+        const costCtx = document.getElementById('cost-chart').getContext('2d');
+        const profitCtx = document.getElementById('profit-chart').getContext('2d');
+
+        const filteredCosts = Object.fromEntries(Object.entries(costs).filter(([_, v]) => v > 0));
+        const costLabels = Object.keys(filteredCosts);
+        const costData = Object.values(filteredCosts);
+
+        if (costChartInstance) {
+            costChartInstance.destroy();
+        }
+        costChartInstance = new Chart(costCtx, {
+            type: 'pie',
+            data: {
+                labels: costLabels,
+                datasets: [{
+                    label: 'สัดส่วนต้นทุน',
+                    data: costData,
+                    backgroundColor: [
+                        '#4299E1', '#F56565', '#48BB78', '#ED8936', '#9F7AEA', '#ECC94B',
+                        '#38B2AC', '#ED64A6', '#A0AEC0', '#F6E05E', '#718096', '#667EEA', '#B794F4'
+                    ],
+                }]
+            },
+            options: { responsive: true, plugins: { legend: { position: 'top' } } }
+        });
+
+        if (profitChartInstance) {
+            profitChartInstance.destroy();
+        }
+        profitChartInstance = new Chart(profitCtx, {
+            type: 'bar',
+            data: {
+                labels: ['รายรับ', 'ต้นทุนรวม', 'กำไรสุทธิ'],
+                datasets: [{
+                    label: 'จำนวนเงิน (บาท)',
+                    data: [totalSales, totalCost, netProfit],
+                    backgroundColor: ['#48BB78', '#F56565', netProfit >= 0 ? '#4299E1' : '#FC8181'],
+                }]
+            },
+            options: { responsive: true, plugins: { legend: { display: false } } }
+        });
+    }
+
+    document.getElementById('export-png').addEventListener('click', () => {
+        html2canvas(document.getElementById('summary-output')).then(canvas => {
+            const link = document.createElement('a');
+            link.download = 'summary-costs.png';
+            link.href = canvas.toDataURL();
+            link.click();
+        });
+    });
+
+    document.getElementById('export-pdf').addEventListener('click', () => {
+        const { jsPDF } = window.jspdf;
+        const pdf = new jsPDF('p', 'mm', 'a4');
+        const summaryElement = document.getElementById('summary-output');
+
+        html2canvas(summaryElement, { scale: 2 }).then(canvas => {
+            const imgData = canvas.toDataURL('image/png');
+            const imgProps = pdf.getImageProperties(imgData);
+            const pdfWidth = pdf.internal.pageSize.getWidth();
+            const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
+            pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+            pdf.save('summary-costs.pdf');
+        });
+    });
+    
+    // Initial calculation
+    calculateAndDisplay();
+});
+</script>
+
+</body>
+</html>
